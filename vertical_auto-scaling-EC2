@@ -1,0 +1,57 @@
+import os
+import boto3
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+ec2_resource = boto3.resource('ec2', region_name=os.environ['AWS_REGION'])
+
+def lambda_handler(event, context):
+    instance_id = event['instance_id']
+    instance = ec2_resource.Instance(instance_id)
+    
+    logger.info(f"WEEKDAY={event['weekday']} - MODIFY={event['modify']}")
+    
+    if (event['weekday'] == 'FRIDAY') and (event['modify'] == 'DOWNGRADE'):
+        
+        instance.stop()
+        instance.wait_until_stopped()
+        
+        instance.modify_attribute(
+            InstanceType={
+                'Value': 't3.medium'
+            }
+        )
+        
+        instance.start()
+        instance.wait_until_running()
+        
+        logger.info('Success-DOWNGRADE')
+        
+        return {
+            'statusCode': 200,
+            'status': "Success-DOWNGRADE",
+            'instance_ID': instance_id
+        }
+    elif (event['weekday'] == 'SUNDAY') and (event['modify'] == 'UPGRADE'):
+        
+        instance.stop()
+        instance.wait_until_stopped()
+        
+        instance.modify_attribute(
+            InstanceType={
+                'Value': 't3.xlarge'
+            }
+        )
+        
+        instance.start()
+        instance.wait_until_running()
+        
+        logger.info('Success-UPGRADE')
+        
+        return {
+            'statusCode': 200,
+            'status': "Success-UPGRADE",
+            'instance_ID': instance_id
+        }
